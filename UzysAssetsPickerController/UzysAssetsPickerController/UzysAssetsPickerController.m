@@ -10,6 +10,9 @@
 #import "UzysWrapperPickerController.h"
 #import "UzysGroupPickerView.h"
 #import <ImageIO/ImageIO.h>
+#import <AVFoundation/AVFoundation.h>
+#import "InitialContainerViewController.h"
+#import "TabBarController.h"
 
 @interface UzysAssetsPickerController ()<UICollectionViewDataSource,UICollectionViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate>
 //View
@@ -17,6 +20,8 @@
 @property (weak, nonatomic) IBOutlet UIButton *btnTitle;
 @property (weak, nonatomic) IBOutlet UIButton *btnDone;
 @property (weak, nonatomic) IBOutlet UIView *navigationTop;
+@property (weak, nonatomic) IBOutlet NSLayoutConstraint *topBarHeight;
+
 @property (weak, nonatomic) IBOutlet UIView *bottomView;
 @property (weak, nonatomic) IBOutlet UISegmentedControl *segmentedControl;
 @property (weak, nonatomic) IBOutlet UILabel *labelSelectedMedia;
@@ -48,7 +53,7 @@
 
 @implementation UzysAssetsPickerController
 
-@synthesize location;
+@synthesize location, topBarHeight, filterBlock;
 
 #pragma mark - ALAssetsLibrary
 
@@ -63,7 +68,6 @@
     return library;
 }
 
-
 - (id)init
 {
     self = [super initWithNibName:@"UzysAssetsPickerController" bundle:[NSBundle bundleForClass:[UzysAssetsPickerController class]]];
@@ -73,6 +77,7 @@
     }
     return self;
 }
+
 - (void)dealloc
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self name:ALAssetsLibraryChangedNotification object:nil];
@@ -80,11 +85,7 @@
     self.assetsGroup = nil;
     self.assets = nil;
 }
-- (void)didReceiveMemoryWarning
-{
-    [super didReceiveMemoryWarning];
-    // Dispose of any resources that can be recreated.
-}
+
 - (void)viewDidLoad
 {
     [super viewDidLoad];
@@ -102,6 +103,27 @@
     [self setupGroupPickerview];
     [self initNoAssetView];
     
+    if (filterBlock){
+        [self.btnCamera setAlpha:0.3f];
+        [self.btnCamera setEnabled:NO];
+    }
+}
+
+- (void)viewDidLayoutSubviews {
+    [super viewDidLayoutSubviews];
+    
+    UIViewController *controller = [[[[UIApplication sharedApplication] delegate] window] rootViewController];
+    CGFloat navHeight = 44.0f;
+    if ([controller isKindOfClass:[UINavigationController class]]){
+        navHeight = [(UINavigationController *)controller navigationBar].frame.size.height;
+    } else if ([controller isKindOfClass:[InitialContainerViewController class]]) {
+        navHeight = [[[[(InitialContainerViewController *)controller tabBarController] viewControllers] objectAtIndex:0] navigationBar].frame.size.height;
+    }
+    navHeight += [UIApplication sharedApplication].statusBarFrame.size.height;
+    topBarHeight.constant = navHeight;
+    
+    [[self collectionView] setFrame:CGRectMake(0, navHeight, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.height - navHeight)];
+    [self.groupPicker setNavBarHeight:topBarHeight.constant];
 }
 
 - (void)initVariable
@@ -112,6 +134,7 @@
     self.view.clipsToBounds = YES;
     self.orderedSelectedItem = [[NSMutableArray alloc] init];
 }
+
 - (void)initImagePicker
 {
     UzysWrapperPickerController *picker = [[UzysWrapperPickerController alloc] init];
@@ -128,9 +151,10 @@
         
         if (_maximumNumberOfSelectionMedia == 0)
         {
-            if (_maximumNumberOfSelectionPhoto == 0)
+            if (_maximumNumberOfSelectionPhoto == 0) {
                 [mediaTypes removeObject:@"public.image"];
-            else if (_maximumNumberOfSelectionVideo == 0)
+                [picker setVideoMaximumDuration:60.0f];
+            } else if (_maximumNumberOfSelectionVideo == 0)
                 [mediaTypes removeObject:@"public.movie"];
         }
         
@@ -139,23 +163,26 @@
     }
     self.picker = picker;
 }
+
 - (void)setupLayout
 {
     UzysAppearanceConfig *appearanceConfig = [UzysAppearanceConfig sharedConfig];
     [self.btnCamera setImage:[UIImage Uzys_imageNamed:appearanceConfig.cameraImageName] forState:UIControlStateNormal];
     [self.btnClose setImage:[UIImage Uzys_imageNamed:appearanceConfig.closeImageName] forState:UIControlStateNormal];
-    self.btnDone.layer.cornerRadius = 15;
-    self.btnDone.clipsToBounds = YES;
-    [self.btnDone setBackgroundColor:appearanceConfig.finishSelectionButtonColor];
+//    self.btnDone.layer.cornerRadius = 15;
+//    self.btnDone.clipsToBounds = YES;
+//    [self.btnDone setBackgroundColor:appearanceConfig.finishSelectionButtonColor];
     
     UIView *lineView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, 0.5)];
     lineView.backgroundColor = [UIColor colorWithWhite:0 alpha:0.15f];
     [self.bottomView addSubview:lineView];
 }
+
 - (void)setupGroupPickerview
 {
     __weak typeof(self) weakSelf = self;
     self.groupPicker = [[UzysGroupPickerView alloc] initWithGroups:self.groups];
+    [self.groupPicker setNavBarHeight:topBarHeight.constant];
     self.groupPicker.blockTouchCell = ^(NSInteger row){
         [weakSelf changeGroup:row];
     };
@@ -163,8 +190,8 @@
     [self.view insertSubview:self.groupPicker aboveSubview:self.bottomView];
     [self.view bringSubviewToFront:self.navigationTop];
     [self menuArrowRotate];
-    
 }
+
 - (void)setupOneMediaTypeSelection
 {
     if(_maximumNumberOfSelectionMedia > 0)
@@ -245,12 +272,14 @@
 
     [self.view insertSubview:self.collectionView atIndex:0];
 }
+
 #pragma mark - Property
 - (void)setAssetsFilter:(ALAssetsFilter *)assetsFilter type:(NSInteger)type
 {
     _assetsFilter = assetsFilter;
     _curAssetFilterType = type;
 }
+
 #pragma mark - public methods
 + (void)setUpAppearanceConfig:(UzysAppearanceConfig *)config
 {
@@ -274,6 +303,7 @@
     [self.orderedSelectedItem removeAllObjects];
     [self menuArrowRotate];
 }
+
 - (void)changeAssetType:(BOOL)isPhoto endBlock:(voidBlock)endBlock
 {
     if(isPhoto)
@@ -294,6 +324,7 @@
         
     }
 }
+
 - (void)setupGroup:(voidBlock)endblock withSetupAsset:(BOOL)doSetupAsset
 {
     if (!self.assetsLibrary)
@@ -323,7 +354,9 @@
                 if(doSetupAsset)
                 {
                     strongSelf.assetsGroup = group;
-                    [strongSelf setupAssets:nil];
+                    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, DISPATCH_QUEUE_PRIORITY_HIGH), ^{
+                        [strongSelf setupAssets:nil];
+                    });
                 }
             }
             else
@@ -352,7 +385,7 @@
         //접근이 허락 안되었을 경우
         [strongSelf showNotAllowed];
         strongSelf.segmentedControl.enabled = NO;
-        strongSelf.btnDone.enabled = NO;
+//        strongSelf.btnDone.enabled = NO;
         strongSelf.btnCamera.enabled = NO;
         [strongSelf setTitle:NSLocalizedStringFromTable(@"Not Allowed", @"UzysAssetsPickerController",nil)];
         //        [self.btnTitle setTitle:NSLocalizedStringFromTable(@"Not Allowed", @"UzysAssetsPickerController",nil) forState:UIControlStateNormal];
@@ -367,7 +400,9 @@
 
 - (void)setupAssets:(voidBlock)successBlock
 {
-    self.title = [self.assetsGroup valueForProperty:ALAssetsGroupPropertyName];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        self.title = [self.assetsGroup valueForProperty:ALAssetsGroupPropertyName];
+    });
     
     if (!self.assets)
         self.assets = [[NSMutableArray alloc] init];
@@ -378,13 +413,20 @@
     {
         self.assetsGroup = self.groups[0];
     }
-    [self.assetsGroup setAssetsFilter:self.assetsFilter];
+    if ([self filterBlock]){
+        [self.assetsGroup setAssetsFilter:[ALAssetsFilter allAssets]];
+    } else {
+        [self.assetsGroup setAssetsFilter:self.assetsFilter];
+    }
     __weak typeof(self) weakSelf = self;
     
     ALAssetsGroupEnumerationResultsBlock resultsBlock = ^(ALAsset *asset, NSUInteger index, BOOL *stop) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (asset)
         {
+            if ([strongSelf filterBlock] && ![strongSelf filterBlock](asset)){
+                return;
+            }
             [strongSelf.assets addObject:asset];
             
             NSString *type = [asset valueForProperty:ALAssetPropertyType];
@@ -411,13 +453,20 @@
 - (void)reloadData
 {
     [self.collectionView reloadData];
-    [self.btnDone setTitle:[NSString stringWithFormat:@"%lu",(unsigned long)self.collectionView.indexPathsForSelectedItems
-                            .count] forState:UIControlStateNormal];
+//    [self.btnDone setTitle:[NSString stringWithFormat:@"%lu",(unsigned long)self.collectionView.indexPathsForSelectedItems
+//                            .count] forState:UIControlStateNormal];
     [self showNoAssetsIfNeeded];
 }
 - (void)setAssetsCountWithSelectedIndexPaths:(NSArray *)indexPaths
 {
-    [self.btnDone setTitle:[NSString stringWithFormat:@"%lu",(unsigned long)indexPaths.count] forState:UIControlStateNormal];
+//    [self.btnDone setTitle:[NSString stringWithFormat:@"%lu",(unsigned long)indexPaths.count] forState:UIControlStateNormal];
+    if ([indexPaths count] == 0){
+        [[self btnCamera] setHidden:NO];
+        [[self btnDone] setHidden:YES];
+    } else {
+        [[self btnCamera] setHidden:YES];
+        [[self btnDone] setHidden:NO];
+    }
 }
 
 #pragma mark - Asset Exception View
@@ -600,9 +649,14 @@
 }
 
 #pragma mark - Collection View Delegate
-
 - (BOOL)collectionView:(UICollectionView *)collectionView shouldSelectItemAtIndexPath:(NSIndexPath *)indexPath
 {
+    if (self.maximumNumberOfSelection == 1){
+        [[self orderedSelectedItem] removeAllObjects];
+        for (NSIndexPath *path in [collectionView indexPathsForSelectedItems]){
+            [[self collectionView] deselectItemAtIndexPath:path animated:YES];
+        }
+    }
     BOOL didExceedMaximumNumberOfSelection = [collectionView indexPathsForSelectedItems].count >= self.maximumNumberOfSelection;
     if (didExceedMaximumNumberOfSelection && self.delegate && [self.delegate respondsToSelector:@selector(uzysAssetsPickerControllerDidExceedMaximumNumberOfSelection:)]) {
         [self.delegate uzysAssetsPickerControllerDidExceedMaximumNumberOfSelection:self];
@@ -649,6 +703,7 @@
         }];
     }
 }
+
 #pragma mark - Helper methods
 - (NSDictionary *)queryStringToDictionaryOfNSURL:(NSURL *)url
 {
@@ -734,7 +789,6 @@
 }
 
 #pragma mark - Notification
-
 - (void)assetsLibraryUpdated:(NSNotification *)notification
 {
     //recheck here
@@ -862,6 +916,7 @@
         
     });
 }
+
 #pragma mark - Property
 - (void)setTitle:(NSString *)title
 {
@@ -871,6 +926,7 @@
     [self.btnTitle setTitleEdgeInsets:UIEdgeInsetsMake(5, 0, 0, 0)];
     [self.btnTitle layoutIfNeeded];
 }
+
 - (void)menuArrowRotate
 {
     [UIView animateWithDuration:0.35 animations:^{
@@ -886,6 +942,7 @@
     }];
     
 }
+
 #pragma mark - Control Action
 - (IBAction)btnAction:(id)sender {
     
@@ -894,6 +951,11 @@
     switch (btn.tag) {
         case kTagButtonCamera:
         {
+            if (self.maximumNumberOfSelectionVideo > 0){
+                [[self picker] setMediaTypes:@[(NSString *)kUTTypeMovie]];
+            } else {
+                [[self picker] setMediaTypes:@[(NSString *)kUTTypeImage]];
+            }
             if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
                 NSString *title = NSLocalizedStringFromTable(@"Error", @"UzysAssetsPickerController", nil);
                 NSString *message = NSLocalizedStringFromTable(@"Device has no camera", @"UzysAssetsPickerController", nil);
@@ -1020,11 +1082,19 @@
         }
             break;
         case kTagButtonDone:
-            [self finishPickingAssets];
+            [btn setEnabled:NO];
+            [btn setAlpha:0.3f];
+            [self finishPickingAssetsWithDimming];
             break;
         default:
             break;
     }
+}
+
+- (void)finishPickingAssetsWithDimming {
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self finishPickingAssets];
+    });
 }
 
 - (IBAction)indexDidChangeForSegmentedControl:(id)sender {
@@ -1039,6 +1109,7 @@
         [self changeAssetType:NO endBlock:nil];
     }
 }
+
 - (void)saveAssetsAction:(NSURL *)assetURL error:(NSError *)error isPhoto:(BOOL)isPhoto {
     if(error)
         return;
@@ -1183,6 +1254,7 @@
     
     
 }
+
 - (void)imagePickerControllerDidCancel:(UIImagePickerController *)picker
 {
     [picker dismissViewControllerAnimated:YES completion:^{

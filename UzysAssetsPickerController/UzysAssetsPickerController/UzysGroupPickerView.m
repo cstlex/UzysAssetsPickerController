@@ -14,6 +14,8 @@
 #define NavigationHeight 64
 @implementation UzysGroupPickerView
 
+@synthesize navBarHeight;
+
 - (id)initWithGroups:(NSMutableArray *)groups
 {
     self = [super initWithFrame:CGRectZero];
@@ -23,12 +25,18 @@
         [self setupLayout];
         [self setupTableView];
         [self addObserver:self forKeyPath:@"groups" options:NSKeyValueObservingOptionNew|NSKeyValueObservingOptionOld context:nil];
+        navBarHeight = NavigationHeight;
     }
     return self;
 }
 - (void)dealloc
 {
     [self removeObserver:self forKeyPath:@"groups"];
+}
+
+- (void)setNavBarHeight:(CGFloat)_navBarHeight {
+    navBarHeight = _navBarHeight;
+    [self.tableView setFrame:CGRectMake(0, navBarHeight, [UIScreen mainScreen].bounds.size.width, self.bounds.size.height -navBarHeight)];
 }
 
 - (void)setupLayout
@@ -42,7 +50,7 @@
 }
 - (void)setupTableView
 {
-    self.tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, NavigationHeight, [UIScreen mainScreen].bounds.size.width, self.bounds.size.height -NavigationHeight) style:UITableViewStylePlain];
+    self.tableView = [[UITableView alloc] initWithFrame:CGRectMake(0, navBarHeight, [UIScreen mainScreen].bounds.size.width, self.bounds.size.height -navBarHeight) style:UITableViewStylePlain];
     self.tableView.autoresizingMask = UIViewAutoresizingFlexibleHeight | UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
     self.tableView.contentInset = UIEdgeInsetsMake(1, 0, 0, 0);
     self.tableView.separatorStyle = UITableViewCellSeparatorStyleNone;

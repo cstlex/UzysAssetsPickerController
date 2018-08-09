@@ -14,6 +14,7 @@
 @property (nonatomic,strong) UITapGestureRecognizer *tapGestureRecognizer;
 @property (nonatomic,copy) intBlock blockTouchCell;
 @property (nonatomic,assign) BOOL isOpen;
+@property (nonatomic, assign) CGFloat navBarHeight;
 - (id)initWithGroups:(NSMutableArray *)groups;
 
 - (void)show;

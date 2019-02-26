@@ -1197,8 +1197,23 @@
                         [self saveAssetsAction:assetURL error:error isPhoto:YES];
                     });
                     DLog(@"writeImageToSavedPhotosAlbum");
+                    if ([strongSelf maximumNumberOfSelectionPhoto] == 1){
+                        [[strongSelf assetsLibrary] assetForURL:assetURL resultBlock:^(ALAsset *asset) {
+                            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                                UzysAssetsPickerController *picker = (UzysAssetsPickerController *)strongSelf;
+                                
+                                if ([picker.delegate respondsToSelector:@selector(uzysAssetsPickerController:didFinishPickingAssets:)])
+                                    [picker.delegate uzysAssetsPickerController:picker didFinishPickingAssets:@[asset]];
+                                
+                                [self dismissViewControllerAnimated:YES completion:^{
+                                    
+                                }];
+                            });
+                        } failureBlock:^(NSError *error) {
+                            DLog([error description]);
+                        }];
+                    }
                 }];
-                
             }];
             
         }
@@ -1216,6 +1231,22 @@
                     [strongSelf saveAssetsAction:assetURL error:error isPhoto:YES];
                 });
                 DLog(@"writeImageToSavedPhotosAlbum");
+                if ([strongSelf maximumNumberOfSelectionPhoto] == 1){
+                    [[strongSelf assetsLibrary] assetForURL:assetURL resultBlock:^(ALAsset *asset) {
+                        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.2f * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                            UzysAssetsPickerController *picker = (UzysAssetsPickerController *)strongSelf;
+                            
+                            if ([picker.delegate respondsToSelector:@selector(uzysAssetsPickerController:didFinishPickingAssets:)])
+                                [picker.delegate uzysAssetsPickerController:picker didFinishPickingAssets:@[asset]];
+                            
+                            [self dismissViewControllerAnimated:YES completion:^{
+                                
+                            }];
+                        });
+                    } failureBlock:^(NSError *error) {
+                        DLog([error description]);
+                    }];
+                }
             }];
         }
     }

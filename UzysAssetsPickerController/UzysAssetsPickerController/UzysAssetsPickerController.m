@@ -951,11 +951,16 @@
     switch (btn.tag) {
         case kTagButtonCamera:
         {
+            NSMutableArray *temp = [NSMutableArray new];
             if (self.maximumNumberOfSelectionVideo > 0){
-                [[self picker] setMediaTypes:@[(NSString *)kUTTypeMovie]];
-            } else {
-                [[self picker] setMediaTypes:@[(NSString *)kUTTypeImage]];
+                [temp addObject:(NSString *)kUTTypeMovie];
+//                [[self picker] setMediaTypes:@[(NSString *)kUTTypeMovie]];
             }
+            if (self.maximumNumberOfSelectionPhoto > 0){
+                [temp addObject:(NSString *)kUTTypeImage];
+//                [[self picker] setMediaTypes:@[(NSString *)kUTTypeImage]];
+            }
+            [[self picker] setMediaTypes:temp];
             if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
                 NSString *title = NSLocalizedStringFromTable(@"Error", @"UzysAssetsPickerController", nil);
                 NSString *message = NSLocalizedStringFromTable(@"Device has no camera", @"UzysAssetsPickerController", nil);

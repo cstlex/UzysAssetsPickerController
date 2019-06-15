@@ -153,7 +153,7 @@
         {
             if (_maximumNumberOfSelectionPhoto == 0) {
                 [mediaTypes removeObject:@"public.image"];
-                [picker setVideoMaximumDuration:60.0f];
+                [picker setVideoMaximumDuration:59.0f];
             } else if (_maximumNumberOfSelectionVideo == 0)
                 [mediaTypes removeObject:@"public.movie"];
         }
@@ -954,6 +954,7 @@
             NSMutableArray *temp = [NSMutableArray new];
             if (self.maximumNumberOfSelectionVideo > 0){
                 [temp addObject:(NSString *)kUTTypeMovie];
+                [self.picker setVideoMaximumDuration:59.0f];
 //                [[self picker] setMediaTypes:@[(NSString *)kUTTypeMovie]];
             }
             if (self.maximumNumberOfSelectionPhoto > 0){

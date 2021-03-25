@@ -117,7 +117,7 @@
     if ([controller isKindOfClass:[UINavigationController class]]){
         navHeight = [(UINavigationController *)controller navigationBar].frame.size.height;
     } else if ([controller isKindOfClass:[InitialContainerViewController class]]) {
-        navHeight = [[[[(InitialContainerViewController *)controller tabBarController] viewControllers] objectAtIndex:0] navigationBar].frame.size.height;
+        navHeight = [[[[(InitialContainerViewController *)controller tabBarController] viewControllers] objectAtIndex:SHARE_TAB_INDEX] navigationBar].frame.size.height;
     }
     navHeight += [UIApplication sharedApplication].statusBarFrame.size.height;
     topBarHeight.constant = navHeight;

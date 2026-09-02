@@ -9,12 +9,14 @@
 #import "UzysAssetsViewCell.h"
 #import "UzysWrapperPickerController.h"
 #import "UzysGroupPickerView.h"
+#import "OTGAssetsGroup.h"
 #import <ImageIO/ImageIO.h>
+#import <Photos/Photos.h>
 #import <AVFoundation/AVFoundation.h>
 #import "InitialContainerViewController.h"
 #import "TabBarController.h"
 
-@interface UzysAssetsPickerController ()<UICollectionViewDataSource,UICollectionViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate>
+@interface UzysAssetsPickerController ()<UICollectionViewDataSource,UICollectionViewDelegate,UIImagePickerControllerDelegate,UINavigationControllerDelegate,PHPhotoLibraryChangeObserver>
 //View
 @property (weak, nonatomic) IBOutlet UIImageView *imageViewTitleArrow;
 @property (weak, nonatomic) IBOutlet UIButton *btnTitle;
@@ -73,14 +75,24 @@
     self = [super initWithNibName:@"UzysAssetsPickerController" bundle:[NSBundle bundleForClass:[UzysAssetsPickerController class]]];
     if(self)
     {
-        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(assetsLibraryUpdated:) name:ALAssetsLibraryChangedNotification object:nil];
+        // ALAssetsLibraryChangedNotification no longer fires anything useful now that the
+        // gallery is read through PhotoKit; PHPhotoLibrary is the source of change events.
+        [[PHPhotoLibrary sharedPhotoLibrary] registerChangeObserver:self];
     }
     return self;
 }
 
+- (void)photoLibraryDidChange:(PHChange *)changeInstance
+{
+    // Called on an arbitrary serial queue.
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [self setupGroup:nil withSetupAsset:YES];
+    });
+}
+
 - (void)dealloc
 {
-    [[NSNotificationCenter defaultCenter] removeObserver:self name:ALAssetsLibraryChangedNotification object:nil];
+    [[PHPhotoLibrary sharedPhotoLibrary] unregisterChangeObserver:self];
     self.assetsLibrary = nil;
     self.assetsGroup = nil;
     self.assets = nil;
@@ -340,13 +352,10 @@
     
     __weak typeof(self) weakSelf = self;
     
-    ALAssetsFilter *assetsFilter = self.assetsFilter; // number of Asset 메쏘드 호출 시에 적용.
-    
-    ALAssetsLibraryGroupsEnumerationResultsBlock resultsBlock = ^(ALAssetsGroup *group, BOOL *stop) {
+    void (^resultsBlock)(OTGAssetsGroup *, BOOL *) = ^(OTGAssetsGroup *group, BOOL *stop) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (group)
         {
-            [group setAssetsFilter:assetsFilter];
             NSInteger groupType = [[group valueForProperty:ALAssetsGroupPropertyType] integerValue];
             if(groupType == ALAssetsGroupSavedPhotos)
             {
@@ -380,7 +389,7 @@
         }
     };
     
-    ALAssetsLibraryAccessFailureBlock failureBlock = ^(NSError *error) {
+    void (^failureBlock)(NSError *) = ^(NSError *error) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         //접근이 허락 안되었을 경우
         [strongSelf showNotAllowed];
@@ -393,9 +402,25 @@
         
     };
     
-    [self.assetsLibrary enumerateGroupsWithTypes:ALAssetsGroupAll
-                                      usingBlock:resultsBlock
-                                    failureBlock:failureBlock];
+    // PhotoKit instead of ALAssetsLibrary: as of iOS 27 every ALAssetsGroup is backed by a
+    // PLFilteredAlbum that raises NSUnknownKeyException for `filteredAssets`, which takes out
+    // -numberOfAssets, -posterImage and -enumerateAssets… See OTGAssetsGroup.
+    [PHPhotoLibrary requestAuthorization:^(PHAuthorizationStatus status) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            BOOL granted = (status == PHAuthorizationStatusAuthorized);
+            if (@available(iOS 14.0, *)) {
+                granted = granted || (status == PHAuthorizationStatusLimited);
+            }
+            if (!granted) {
+                failureBlock([NSError errorWithDomain:ALAssetsLibraryErrorDomain
+                                                 code:ALAssetsLibraryAccessGloballyDeniedError
+                                             userInfo:nil]);
+                return;
+            }
+            [OTGAssetsGroup enumerateGroupsWithFilter:(OTGAssetsGroupFilter)self.curAssetFilterType
+                                           usingBlock:resultsBlock];
+        });
+    }];
 }
 
 - (void)setupAssets:(voidBlock)successBlock
@@ -413,13 +438,13 @@
     {
         self.assetsGroup = self.groups[0];
     }
-    if ([self filterBlock]){
-        [self.assetsGroup setAssetsFilter:[ALAssetsFilter allAssets]];
-    } else {
-        [self.assetsGroup setAssetsFilter:self.assetsFilter];
+    // The group filters by media type itself now; filterBlock still gets the unfiltered set.
+    if ([self.assetsGroup isKindOfClass:[OTGAssetsGroup class]]) {
+        ((OTGAssetsGroup *)self.assetsGroup).mediaFilter =
+            [self filterBlock] ? OTGAssetsGroupFilterAll : (OTGAssetsGroupFilter)self.curAssetFilterType;
     }
     __weak typeof(self) weakSelf = self;
-    
+
     ALAssetsGroupEnumerationResultsBlock resultsBlock = ^(ALAsset *asset, NSUInteger index, BOOL *stop) {
         __strong typeof(weakSelf) strongSelf = weakSelf;
         if (asset)

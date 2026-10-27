@@ -5,6 +5,7 @@
 //  Created by Uzysjung on 2014. 2. 12..
 //  Copyright (c) 2014년 Uzys. All rights reserved.
 //
+#import "Utils.h"
 #import "UzysAssetsPickerController.h"
 #import "UzysAssetsViewCell.h"
 #import "UzysWrapperPickerController.h"
@@ -990,8 +991,7 @@
             if (![UIImagePickerController isSourceTypeAvailable:UIImagePickerControllerSourceTypeCamera]) {
                 NSString *title = NSLocalizedStringFromTable(@"Error", @"UzysAssetsPickerController", nil);
                 NSString *message = NSLocalizedStringFromTable(@"Device has no camera", @"UzysAssetsPickerController", nil);
-                UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                [myAlertView show];
+                [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
             }
             else
             {
@@ -1023,8 +1023,7 @@
                     
                     NSString *title = NSLocalizedStringFromTable(@"Permission Denied", @"UzysAssetsPickerController", nil);
                     NSString *message = NSLocalizedStringFromTable(@"Camera Permission required for this action.", @"UzysAssetsPickerController", nil);
-                    UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                    [myAlertView show];
+                    [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
                     
                     [AVCaptureDevice requestAccessForMediaType:AVMediaTypeVideo completionHandler:^(BOOL granted) {
                         if(granted){
@@ -1047,8 +1046,7 @@
                             NSLog(@"Not granted access to %@", AVMediaTypeVideo);
                             NSString *title = NSLocalizedStringFromTable(@"Permission Denied", @"UzysAssetsPickerController", nil);
                             NSString *message = NSLocalizedStringFromTable(@"Camera Permission required for this action.", @"UzysAssetsPickerController", nil);
-                            UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                            [myAlertView show];
+                            [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
                             
                         }
                     }];
@@ -1058,8 +1056,7 @@
                     NSLog(@"%@", @"Restricted, normally won't happen");
                     NSString *title = NSLocalizedStringFromTable(@"Permission Denied", @"UzysAssetsPickerController", nil);
                     NSString *message = NSLocalizedStringFromTable(@"Camera Permission required for this action.", @"UzysAssetsPickerController", nil);
-                    UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                    [myAlertView show];
+                    [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
                     
                 }
                 else if(authStatus == AVAuthorizationStatusNotDetermined)
@@ -1074,8 +1071,7 @@
                             NSLog(@"Not granted access to %@", AVMediaTypeVideo);
                             NSString *title = NSLocalizedStringFromTable(@"Permission Denied", @"UzysAssetsPickerController", nil);
                             NSString *message = NSLocalizedStringFromTable(@"Camera Permission required for this action.", @"UzysAssetsPickerController", nil);
-                            UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                            [myAlertView show];
+                            [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
                             
                         }
                     }];
@@ -1085,8 +1081,7 @@
                     NSLog(@"%@", @"Camera access unknown error.");
                     NSString *title = NSLocalizedStringFromTable(@"Permission Access Error", @"UzysAssetsPickerController", nil);
                     NSString *message = NSLocalizedStringFromTable(@"Unknown Error Occured", @"UzysAssetsPickerController", nil);
-                    UIAlertView *myAlertView = [[UIAlertView alloc] initWithTitle:title message:message delegate:nil cancelButtonTitle:@"OK" otherButtonTitles: nil];
-                    [myAlertView show];
+                    [Utils showAlertWithTitle:title message:message buttonTitle:@"OK"];
                     
                 }
                 
